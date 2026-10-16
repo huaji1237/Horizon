@@ -514,15 +514,19 @@ class GeminiClient(AIClient):
         temperature = self.temperature if temperature is None else temperature
         max_tokens = self.max_tokens if max_tokens is None else max_tokens
 
+        generation_config = {
+            "system_instruction": system,
+            "max_output_tokens": max_tokens,
+            "response_mime_type": "application/json",
+        }
+        # Gemini 3+ rejects legacy sampling parameters such as temperature.
+        if not self.model.startswith("gemini-3"):
+            generation_config["temperature"] = temperature
+
         response = await self.client.aio.models.generate_content(
             model=self.model,
             contents=user,
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                response_mime_type="application/json"
-            )
+            config=types.GenerateContentConfig(**generation_config),
         )
         usage = getattr(response, "usage_metadata", None)
         if usage is not None:
